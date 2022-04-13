@@ -1,0 +1,152 @@
+---
+# Setup k8s master and worker nodes environment 
+
+- hosts: all
+  tasks:
+  - name: set setup facts
+    include: set_facts_.yaml
+
+  - name: Install epel repo
+    package:
+      name: "{{epel_repo }}"
+      state: present
+
+  - name: Install needed packages
+    package:
+      name: "{{ packages }}"
+      state: present
+
+  - name: Get network device system name
+    shell: "nmcli -t dev show {{ networkifacename }} | grep GENERAL.CONNECTION | cut -d: -f2"
+    register: devicesystemname
+
+  - name: Setting network device system name as a fact
+    set_fact:
+      dsname: "{{ devicesystemname.stdout }}"
+
+  - name: Firewalld set default zone to trusted
+    shell: 'firewall-cmd --set-default-zone=trusted'
+
+  - name: Assigning network interface "{{ dsname }}" to trusted FW zone
+    shell: 'nmcli con mod "{{ dsname }}" connection.zone trusted'
+
+  - name: Disable swap for current session
+    command: swapoff -a
+    become: true
+
+  - name: Disable swap permanently, persist reboots
+    replace:
+      path: /etc/fstab
+      regexp: '^(\s*)([^#\n]+\s+)(\w+\s+)swap(\s+.*)$'
+      replace: '#\1\2\3swap\4'
+      backup: yes
+
+  - name: Enabling CGROUPS v2 
+    shell: 'grubby --update-kernel=ALL --args="systemd.unified_cgroup_hierarchy=1"'
+  
+  - name: setting up CRI-O
+    block:
+    - name: copy cri-o module config
+      copy:
+        src: ../files/crio.conf
+        dest: /etc/modules-load.d/crio.conf
+        mode: '0644'
+
+    - name: load cri-o modules
+      modprobe:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - overlay
+        - br_netfilter
+
+    - name: Set up required sysctl params
+      copy:
+        src: ../files/99-kubernetes-cri.conf
+        dest: /etc/sysctl.d/99-kubernetes-cri.conf
+        mode: '0644'
+
+    - name: Enable sysctl.conf
+      command: sysctl --system
+      become: true
+
+    - name: Download libcontainers:stable.repo for "{{ crio_os }}"
+      get_url:
+        url: "https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/{{ crio_os }}/devel:kubic:libcontainers:stable.repo"
+        dest: /etc/yum.repos.d/devel:kubic:libcontainers:stable.repo
+        mode: '0644'
+
+    - name: Download libcontainers:stable:crio.repo version "{{ crio_ver }}" for "{{ crio_os }}"
+      get_url:
+        url: "https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable:cri-o:{{ crio_ver }}/{{ crio_os }}/devel:kubic:libcontainers:stable:cri-o:{{ crio_ver }}.repo"
+        dest: "/etc/yum.repos.d/devel:kubic:libcontainers:stable:cri-o:{{ crio_ver }}.repo"
+        mode: '0644'
+
+    - name: Install cri-o package
+      package:
+        name: "cri-o"
+        state: present
+
+    - name: force systemd to reread configs 
+      systemd: daemon_reload=yes
+
+    - name: Enable and start cri-o service
+      systemd:
+        name: crio
+        enabled: yes
+        state: started
+
+    when: crio_os is defined and crio_ver is defined
+
+  - name: setting up kubelet, bubectl, kubeadm
+    block:
+    - name: copy kubernetes repo files
+      copy:
+        src: ../files/kubernetes.repo
+        dest: /etc/yum.repos.d/kubernetes.repo
+        mode: '0644'
+
+    - name: Put SELinux in permissive mode, logging actions that would be blocked.
+      selinux:
+        policy: targeted
+        state: permissive
+
+    - name: Install kubernetes packages
+      yum:
+        name: 
+          - kubelet
+          - kubectl
+          - kubeadm
+        state: present
+        disable_excludes: kubernetes
+
+    - name: Enable and start kubelet service
+      systemd:
+        name: kubelet
+        enabled: yes
+        state: started
+
+  - name: Restarting NetworkManager
+    service:
+      name: "{{ item }}"
+      state: restarted
+    with_items:
+      - NetworkManager
+
+
+#   - name:  Information about this install
+#     debug:
+#       msg:
+#         - "#========================= For your information ==================================="
+#         - "#"
+#         - "# 172.16.0.0       172.31.255.255 (subnet mask 255.240.0.0 or /12)"
+#         - "# docker           172.17.0.0/16"
+#         - "# pod-network-cidr 172.22.0.0/16"
+#         - "# service-cidr     172.23.0.0/16"
+#         - "# "
+#         - "# To initiate k8s master install run the following command on the first master node:"
+#         - " "
+#         - "$ sudo kubeadm init --control-plane-endpoint=192.168.33.77 --pod-network-cidr=172.22.0.0/16 --service-cidr=172.23.0.0/16 --upload-certs"
+#         - " "
+
+

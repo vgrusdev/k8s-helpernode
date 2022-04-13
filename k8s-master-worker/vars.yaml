@@ -1,0 +1,25 @@
+---
+networkifacename: "enp1s0"
+#
+# CRI-O setup
+# https://kubernetes.io/docs/setup/production-environment/container-runtimes/
+# -------
+# Operating system	os
+# Centos 8	        CentOS_8
+# Centos 8 Stream	CentOS_8_Stream
+# Centos 7      	CentOS_7
+crio_os: "CentOS_8_Stream"
+crio_ver: "1.23"
+
+#
+# 172.16.0.0       172.31.255.255 (subnetwork mask: 255.240.0.0 or /12)
+#
+# docker           172.17.0.0/16
+# pod-network-cidr 172.18.0.0/16
+# service-cidr     172.19.0.0/16
+#
+# sudo kubeadm init --control-plane-endpoint=192.168.33.77 --pod-network-cidr=172.22.0.0/16 --service-cidr=172.23.0.0/16 --upload-certs
+
+#pod-network-cidr: "172.18.0.0/16"
+#service-cidr:     "172.19.0.0/16"
+#control-plane-endpoint: "192.168.33.77"

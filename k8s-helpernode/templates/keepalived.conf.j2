@@ -1,0 +1,56 @@
+{% for h in high_availability.helpernodes %}
+{%if h.name == ansible_hostname %}
+global_defs {
+    router_id {{ h.name }}
+    enable_script_security
+}
+
+vrrp_script haproxy_check {
+    script "/etc/keepalived/vrrp_script.sh haproxy"
+    interval 4
+    weight {{ calibrated_priority }}
+    user root
+    init_fail
+    rise 2
+    fall 2
+}
+
+vrrp_instance OCP_LB {
+    state {{ h.state }}
+    interface {{ networkifacename }}
+    virtual_router_id {{ helper.ipaddr.split('.')[3] }}
+    priority {{ h.priority }}
+    virtual_ipaddress {
+      {{ helper.ipaddr }}
+    }
+    track_script {
+      haproxy_check
+    }
+    authentication {
+       auth_type PASS
+       auth_pass {{ password.stdout }}
+    }
+}
+
+{% if high_availability_ext.networkifacename is defined and high_availability_ext.ipaddr is defined %}
+{% set router_id = "1" + helper.ipaddr.split('.')[3] %}
+vrrp_instance EXT_LB {
+    state {{ h.state }}
+    interface {{ high_availability_ext.networkifacename }}
+    virtual_router_id {{ router_id }}
+    priority {{ h.priority }}
+    virtual_ipaddress {
+       {{ high_availability_ext.ipaddr }}
+    }
+    track_script {
+        haproxy_check
+    }
+    authentication {
+        auth_type PASS
+        auth_pass {{ password.stdout }}
+    }
+}
+{% endif %}
+{% endif %}
+{% endfor %}
+

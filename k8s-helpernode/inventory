@@ -1,0 +1,4 @@
+[vmhost]
+#localhost ansible_connection=local
+192.168.33.2 ansible_connection=ssh ansible_user=root
+192.168.33.3 ansible_connection=ssh ansible_user=root

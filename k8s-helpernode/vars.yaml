@@ -1,0 +1,66 @@
+---
+disk: vda
+helper:
+  name: "vip"
+  ipaddr: "192.168.33.77"
+  networkifacename: "enp1s0"
+dns:
+  domain: "cluster.local"
+  clusterid: "k8s"
+  forwarder1: "10.134.16.1"
+#  forwarder2: "8.8.4.4"
+dhcp:
+  router: "192.168.33.77"
+  bcast: "192.168.33.255"
+  netmask: "255.255.255.0"
+  poolstart: "192.168.33.16"
+  poolend: "192.168.33.130"
+  ipid: "192.168.33.0"
+  netmaskid: "255.255.255.0"
+masters:
+  - name: "master1"
+    ipaddr: "192.168.33.21"
+    macaddr: "52:54:00:02:40:46"
+  - name: "master2"
+    ipaddr: "192.168.33.22"
+    macaddr: "52:54:00:09:c0:bc"
+  - name: "master3"
+    ipaddr: "192.168.33.23"
+    macaddr: "52:54:00:35:46:e9"
+workers:
+  - name: "worker1"
+    ipaddr: "192.168.33.31"
+    macaddr: "52:54:00:1b:c2:3b"
+  - name: "worker2"
+    ipaddr: "192.168.33.32"
+    macaddr: "52:54:00:fb:b8:53"
+    
+high_availability:
+  helpernodes:
+    - name: "lb1"
+      ipaddr: "192.168.33.2"
+      state: MASTER
+      priority: 100
+    - name: "lb2"
+      ipaddr: "192.168.33.3"
+      state: BACKUP
+      priority: 90
+
+high_availability_ext:
+  networkifacename: "enp2s0"
+  ipaddr: "10.134.16.120"
+
+ppc64le: false
+#setup_registry:
+#  deploy: true
+#  autosync_registry: true
+#  registry_image: docker.io/ibmcom/registry-ppc64le:2.7.1
+#  local_repo: "ocp4/openshift4"
+#  product_repo: "openshift-release-dev"
+#  release_name: "ocp-release"
+#  release_tag: "4.7.10-ppc64le"
+staticips: false
+helper_packages:
+  httpd: false
+  nfsd: false
+  podman: false

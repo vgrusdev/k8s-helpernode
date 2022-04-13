@@ -1,0 +1,37 @@
+---
+- block:
+    - assert: 
+        that: "{{ networkifacename is defined }}"
+    - set_fact: 
+        networkifacename: "{{ networkifacename }}"
+  rescue:
+    - set_fact:
+        networkifacename: "{{ ansible_default_ipv4.interface }}"
+
+- block:
+  - set_fact:
+      epel_repo:
+        - epel-release
+  - set_fact:
+      packages:
+        - nmon
+        - htop
+        - tc
+        - grubby
+  
+  when: ansible_distribution_major_version == "7"
+
+- block:
+  - set_fact:
+      epel_repo:
+        - epel-release
+
+  - set_fact:
+      packages:
+        - nmon
+        - htop
+        - tc
+        - grubby
+
+  when: ansible_distribution_major_version == "8"
+
